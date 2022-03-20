@@ -1,0 +1,9 @@
+venv/
+env/
+
+.idea/
+__pycache__/
+
+flask_session/
+
+production_config.py
