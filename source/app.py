@@ -4,8 +4,9 @@ from flask_mail import Mail
 from flask_session import Session
 from database import MongoAPI
 from auth import current_user, authenticate, log_out
-from components import unique_email, device_registration, totp_mail
+from components import unique_email, device_registration, totp_mail, is_device_registered
 from core import verify_totp
+from model.main import password_less_register, password_less_login
 
 app = Flask(__name__)
 mail = Mail(app)
@@ -57,17 +58,18 @@ def register():
     email_validation = unique_email(document["user_details"]["email"])
     if not email_validation["unique"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Provided mail id already exists"}),
+            response=json.dumps({"status": "failure", "code": "#106"}),
             status=200,
             mimetype='application/json')
 
     # User data insertion
     document["user_details"]["active"] = False
+    document["user_details"]["verified"] = False
     user_obj = MongoAPI({"database": "C3AM",
                          "collection": "user_details"})
     if not user_obj.write({"document": document["user_details"]})["status"] == "success":
         return Response(
-            response=json.dumps({"status": "error", "message": "Connection error please try again"}),
+            response=json.dumps({"status": "error", "code": "#109"}),
             status=400,
             mimetype='application/json')
 
@@ -77,7 +79,7 @@ def register():
         if not result["status"] == "success":
             return Response(
                 response=json.dumps(
-                    {"status": "error", "message": "Connection error your device couldn't be registered"}),
+                    {"status": "error", "code": "#109"}),
                 status=400,
                 mimetype='application/json')
 
@@ -90,13 +92,13 @@ def register():
     if mail_msg["status"] != "success":
         return Response(
             response=json.dumps(
-                {"status": "error", "message": "Connection error your device couldn't be registered"}),
+                {"status": "error", "code": "#109"}),
             status=400,
             mimetype='application/json')
     mail.send(mail_msg["data"])
 
     return Response(response=json.dumps({"status": "success",
-                                         "message": "Registration completed successfully! Check your email to activate your account"}),
+                                         "code": "#104"}),
                     status=200,
                     mimetype='application/json')
 
@@ -108,26 +110,116 @@ def account_activation():
     # Verify the posted TOTP
     if not verify_totp(document)["status"] == "success":
         return Response(
-            response=json.dumps({"status": "failure", "message": "Account activation unsuccessful, Try Again!"}),
+            response=json.dumps({"status": "failure", "code": "#110"}),
             status=400,
             mimetype='application/json')
 
     # Change user status to active and authenticate the user
     user_obj = MongoAPI({"database": "C3AM", "collection": "user_details"})
     update_res = user_obj.update({"email": document["email"]},
-                                 {"active": True})
-    auth_res = authenticate(document["email"])
+                                 {"verified": True})
 
-    # Check if active status update and authentication have been executed
-    if update_res["status"] != "success" or auth_res["status"] != "success":
+    # Check if verified status has been updated
+    if update_res["status"] != "success":
         return Response(
-            response=json.dumps({"status": "failure", "message": "Connection error please try again!"}),
+            response=json.dumps({"status": "failure", "code": "#109"}),
             status=400,
             mimetype='application/json')
 
-    return Response(response=json.dumps({"status": "success", "message": "Account activated successfully"}),
+    return Response(response=json.dumps({"status": "success", "code": "#103"}),
                     status=200,
                     mimetype='application/json')
+
+
+@app.route('/users/password_less/activation', methods=['POST'])
+def password_less_activation():
+    document = request.json
+
+    # Email Validation
+    email_validation = unique_email(document["email"])
+    if email_validation["unique"]:
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#111"}),
+            status=200,
+            mimetype='application/json')
+
+    # Check if the user account is active
+    if not email_validation["instance"]["verified"]:
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#107"}),
+            status=400,
+            mimetype='application/json')
+
+    user_obj = MongoAPI({"database": "C3AM", "collection": "user_details"})
+    update_res = user_obj.update({"email": document["email"]},
+                                 {"active": True})
+    passwordless_res = password_less_register(document)
+    auth_res = authenticate(document["email"])
+
+    # Check if active status has been updated and authentication have been executed
+    if update_res["status"] != "success" or passwordless_res["status"] != "success" or auth_res["status"] != "success":
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#109"}),
+            status=400,
+            mimetype='application/json')
+
+    return Response(
+        response=json.dumps({"status": "success", "code": "#101"}),
+        status=200,
+        mimetype='application/json')
+
+
+@app.route('/users/password_less/login', methods=['POST'])
+def password_less_authentication():
+    document = request.json
+
+    # Email Validation
+    email_validation = unique_email(document["email"])
+    if email_validation["unique"]:
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#111"}),
+            status=200,
+            mimetype='application/json')
+
+    # Check if the user account is verified
+    if not email_validation["instance"]["active"]:
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#107"}),
+            status=400,
+            mimetype='application/json')
+
+    # Check if the user account is active
+    if not email_validation["instance"]["active"]:
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#108"}),
+            status=400,
+            mimetype='application/json')
+
+    response = password_less_login(document)
+    # Check if active status update and authentication have been executed
+    if response["status"] != "success":
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#105"}),
+            status=400,
+            mimetype='application/json')
+
+    if is_device_registered(document["email"], document["device_details"])["status"] != "success":
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#112"}),
+            status=200,
+            mimetype='application/json')
+
+    # Create the current user session
+    if authenticate(document["email"])["status"] != "success":
+        return Response(
+            response=json.dumps({"status": "failure", "code": "#109"}),
+            status=400,
+            mimetype='application/json')
+
+    return Response(
+        response=json.dumps({"status": "success", "code": "#101"}),
+        status=200,
+        mimetype='application/json')
 
 
 @app.route('/users/resend', methods=['POST'])
@@ -138,7 +230,7 @@ def resend_totp():
     email_validation = unique_email(document["email"])
     if email_validation["unique"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Provided mail id does not exists"}),
+            response=json.dumps({"status": "failure", "code": "#111"}),
             status=200,
             mimetype='application/json')
 
@@ -157,7 +249,7 @@ def resend_totp():
         mail_msg = totp_mail(document["email"], mail_content)
     mail.send(mail_msg["data"])
 
-    return Response(response=json.dumps({"status": "success", "message": "OTP resent successfully"}),
+    return Response(response=json.dumps({"status": "success", "code": "OTP resent successfully"}),
                     status=200,
                     mimetype='application/json')
 
@@ -170,14 +262,14 @@ def mfa_login():
     email_validation = unique_email(document["email"])
     if email_validation["unique"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Provided mail id does not exists"}),
+            response=json.dumps({"status": "failure", "code": "#111"}),
             status=200,
             mimetype='application/json')
 
     # Check if the user account is active
     if not email_validation["instance"]["active"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Activate before you access your account"}),
+            response=json.dumps({"status": "failure", "code": "#108"}),
             status=400,
             mimetype='application/json')
 
@@ -189,7 +281,7 @@ def mfa_login():
     mail_msg = totp_mail(document["email"], mail_content)
     mail.send(mail_msg["data"])
 
-    return Response(response=json.dumps({"status": "success", "message": "TOTP sent to " + document["email"]}),
+    return Response(response=json.dumps({"status": "success", "code": "#104"}),
                     status=200,
                     mimetype='application/json')
 
@@ -202,32 +294,32 @@ def complete_mfa():
     email_validation = unique_email(document["email"])
     if email_validation["unique"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Provided mail id does not exists"}),
+            response=json.dumps({"status": "failure", "code": "#111"}),
             status=200,
             mimetype='application/json')
 
     # Check if the user account is active
     if not email_validation["instance"]["active"]:
         return Response(
-            response=json.dumps({"status": "failure", "message": "Activate before you access your account"}),
+            response=json.dumps({"status": "failure", "code": "#108"}),
             status=400,
             mimetype='application/json')
 
     # Verify the posted TOTP for MFA
     if not verify_totp(document):
         return Response(
-            response=json.dumps({"status": "failure", "message": "Authentication unsuccessful, Try Aga!in"}),
+            response=json.dumps({"status": "failure", "code": "#105"}),
             status=405,
             mimetype='application/json')
 
     # Create the current user session
     if authenticate(document["email"])["status"] != "success":
         return Response(
-            response=json.dumps({"status": "failure", "message": "Connection error please try again!"}),
+            response=json.dumps({"status": "failure", "code": "#109"}),
             status=400,
             mimetype='application/json')
 
-    return Response(response=json.dumps({"status": "success", "message": "Authenticated successfully"}),
+    return Response(response=json.dumps({"status": "success", "code": "101"}),
                     status=200,
                     mimetype='application/json')
 

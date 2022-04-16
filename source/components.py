@@ -21,6 +21,22 @@ def unique_email(email_id):
     return {"unique": True}
 
 
+def is_device_registered(email_id, device_details):
+    """
+    :param email_id: <str> email id of the requested user
+    :param device_details: <json> Document to be inserted
+    :return <json> status of insertion execution
+    """
+    device_obj = MongoAPI({"database": "RegisteredDevices",
+                           "collection": email_id})
+    response = {"status": "failure"}
+    documents = device_obj.read()
+    for doc in documents:
+        if doc == device_details:
+            response = {"status": "success"}
+    return response
+
+
 def device_registration(email_id, device_details):
     """
     :param email_id: <str> email id of the requested user
