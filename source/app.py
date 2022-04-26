@@ -1,15 +1,20 @@
 import settings
+import os
 from flask import Flask, Response, json, request
 from flask_mail import Mail
-from flask_session import Session
+from flask_cors import CORS
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
 from database import MongoAPI
-from auth import current_user, authenticate, log_out
+from auth import current_user, authenticate
 from components import unique_email, device_registration, totp_mail, is_device_registered
 from core import verify_totp
 from model.main import password_less_register, password_less_login
 
 app = Flask(__name__)
 mail = Mail(app)
+app.config['DEBUG'] = True
+app.config['SECRET_KEY'] = os.urandom(24)
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
@@ -17,36 +22,21 @@ app.config['MAIL_USERNAME'] = settings.MAIL_USERNAME
 app.config['MAIL_PASSWORD'] = settings.MAIL_PASSWORD
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
+
 mail = Mail(app)
 
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
+app.config['JWT_SECRET_KEY'] = os.urandom(24)
+
+JWTManager(app)
+CORS(app)
 
 
 @app.route('/users/current-user', methods=['GET'])
+@jwt_required()
 def current_user_session():
     current_session = current_user()
-
     return Response(response=json.dumps(current_session),
                     status=200 if current_session["status"] == "success" else 400,
-                    mimetype='application/json')
-
-
-@app.route('/users/logout', methods=['POST'])
-def logout_current_session():
-    # No current active sessions
-    current_session = current_user()
-    if not current_session["status"] == "success":
-        return Response(
-            response=json.dumps(current_session),
-            status=400,
-            mimetype='application/json')
-
-    response = log_out()
-
-    return Response(response=json.dumps(response),
-                    status=200,
                     mimetype='application/json')
 
 
@@ -155,7 +145,6 @@ def password_less_activation():
                                  {"active": True})
     passwordless_res = password_less_register(document)
     auth_res = authenticate(document["email"])
-
     # Check if active status has been updated and authentication have been executed
     if update_res["status"] != "success" or passwordless_res["status"] != "success" or auth_res["status"] != "success":
         return Response(
@@ -164,7 +153,7 @@ def password_less_activation():
             mimetype='application/json')
 
     return Response(
-        response=json.dumps({"status": "success", "code": "#101"}),
+        response=json.dumps({"status": "success", "code": "#101", "access_token": auth_res["access_token"]}),
         status=200,
         mimetype='application/json')
 
@@ -210,14 +199,14 @@ def password_less_authentication():
             mimetype='application/json')
 
     # Create the current user session
-    if authenticate(document["email"])["status"] != "success":
+    auth_res = authenticate(document["email"])
+    if auth_res["status"] != "success":
         return Response(
             response=json.dumps({"status": "failure", "code": "#109"}),
             status=400,
             mimetype='application/json')
-
     return Response(
-        response=json.dumps({"status": "success", "code": "#101"}),
+        response=json.dumps({"status": "success", "code": "#101", "access_token": auth_res["access_token"]}),
         status=200,
         mimetype='application/json')
 
@@ -312,14 +301,25 @@ def complete_mfa():
             status=405,
             mimetype='application/json')
 
+    # Device data insertion
+    if document["remember_device"]:
+        result = device_registration(document["email"], document["device_details"])
+        if not result["status"] == "success":
+            return Response(
+                response=json.dumps(
+                    {"status": "error", "code": "#109"}),
+                status=400,
+                mimetype='application/json')
+
     # Create the current user session
-    if authenticate(document["email"])["status"] != "success":
+    auth_res = authenticate(document["email"])
+    if auth_res["status"] != "success":
         return Response(
             response=json.dumps({"status": "failure", "code": "#109"}),
             status=400,
             mimetype='application/json')
 
-    return Response(response=json.dumps({"status": "success", "code": "101"}),
+    return Response(response=json.dumps({"status": "success", "code": "101", "access_token": auth_res["access_token"]}),
                     status=200,
                     mimetype='application/json')
 

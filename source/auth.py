@@ -1,5 +1,5 @@
-from flask import session
 from database import MongoAPI
+from flask_jwt_extended import create_access_token, get_jwt
 
 
 def authenticate(email_id):
@@ -12,33 +12,23 @@ def authenticate(email_id):
     documents = user_obj.read()
     for doc in documents:
         if doc["email"] == email_id:
-            session["username"] = doc["username"]
-            session["email"] = doc["email"]
-            return {"status": "success"}
+            session = {
+                "username": doc["username"],
+                "email": doc["email"]
+            }
+            access_token = create_access_token(doc["username"], additional_claims=session)
+            return {"status": "success", "access_token": access_token}
     return {"status": "failure"}
-
-
-def log_out():
-    """
-    :return: <json> Logout status
-    """
-    session.pop('email', None)
-    return {"status": "success"}
 
 
 def current_user():
     """
     :return: <json> Current user details
     """
-    if 'email' in session:
-        if session['email']:
-            user_obj = MongoAPI({"database": "C3AM",
-                                 "collection": "user_details"})
-            documents = user_obj.read()
-            for doc in documents:
-                if doc["email"] == session['email']:
-                    return {"status": "success",
-                            "data": {"username": doc["username"],
-                                     "email": doc["email"]}}
+    session = get_jwt()
+    if "email" in session:
+        return {"status": "success",
+                "data": {"username": session["username"],
+                         "email": session["email"]}}
 
     return {"status": "failure"}
