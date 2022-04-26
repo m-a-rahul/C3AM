@@ -33,6 +33,10 @@ const error_code_mapping = {
 };
 
 const post = (json_data, url_path, callback, asyncStatus = true) => {
+    var key ='AAAAAAAAAAAAAAAA';
+    key = CryptoJS.enc.Utf8.parse(key);
+    var encrypted = CryptoJS.AES.encrypt(JSON.stringify(json_data), key, {mode: CryptoJS.mode.ECB});
+    encrypted =encrypted.toString();
     $.ajax({
             type: "POST",
             async: asyncStatus,
@@ -40,7 +44,7 @@ const post = (json_data, url_path, callback, asyncStatus = true) => {
                 "Content-Type": "application/json",
               },
             credentials: 'same-origin',
-            data: JSON.stringify(json_data),
+            data: JSON.stringify({"encrypted":encrypted}),
             timeout: 60000,
             url: "http://localhost:50001/"+url_path
         })

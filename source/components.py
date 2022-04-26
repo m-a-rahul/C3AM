@@ -2,8 +2,22 @@ import random
 import string
 import datetime
 import settings
+import base64
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from passlib.hash import sha256_crypt
 from flask_mail import Message
 from database import MongoAPI
+
+
+def decryptAES(enc):
+    """
+    :param enc: <str> encrypted cipher text
+    :return <str> decrypted plain text
+    """
+    enc = base64.b64decode(enc)
+    cipher = AES.new(settings.AES_KEY.encode('utf-8'), AES.MODE_ECB)
+    return unpad(cipher.decrypt(enc), 16)
 
 
 def unique_email(email_id):
@@ -32,7 +46,7 @@ def is_device_registered(email_id, device_details):
     response = {"status": "failure"}
     documents = device_obj.read()
     for doc in documents:
-        if doc == device_details:
+        if sha256_crypt.verify(str(device_details), doc["device_hash"]):
             response = {"status": "success"}
     return response
 
@@ -45,7 +59,8 @@ def device_registration(email_id, device_details):
     """
     device_obj = MongoAPI({"database": "RegisteredDevices",
                            "collection": email_id})
-    response = device_obj.write({"document": device_details})
+    hashed_device_details = sha256_crypt.encrypt(str(device_details))
+    response = device_obj.write({"document": {"device_hash": hashed_device_details}})
     return response
 
 
@@ -63,9 +78,10 @@ def generate_totp(email_id):
     for doc in documents:
         if doc["email"] == email_id:
             totp_obj.delete({"document": doc})
-
+    hashed_totp = sha256_crypt.encrypt(totp)
     # Write the generated totp into the Mongo DB
-    response = totp_obj.write({"document": {"email": email_id, "totp": totp, "datetime": datetime.datetime.now()}})
+    response = totp_obj.write(
+        {"document": {"email": email_id, "totp": hashed_totp, "datetime": datetime.datetime.now()}})
     return {"status": response["status"],
             "totp": totp}
 
@@ -83,3 +99,24 @@ def totp_mail(email_id, content):
         return {"status": "success",
                 "data": msg}
     return totp_res
+
+
+def verify_totp(data):
+    """
+    :param data: <json> JSON containing email and totp
+    :return <json> JSON containing status along with the corresponding message
+    """
+    totp_obj = MongoAPI({"database": "C3AM", "collection": "totp"})
+    documents = totp_obj.read()
+    for doc in documents:
+        if doc["email"] == data["email"] and sha256_crypt.verify(data["totp"], doc["totp"]):
+            current_time = datetime.datetime.now()
+            time_difference = current_time - doc["datetime"]
+            time_delay = divmod(time_difference.days * (24 * 60 * 60) + time_difference.seconds, 60)
+            in_secs = time_delay[0] * 60 + time_delay[1]
+            if in_secs < 300:
+                totp_obj.delete({"document": doc})
+                return {"status": "success",
+                        "message": "Authentication successful"}
+    return {"status": "failure",
+            "message": "Authentication unsuccessful"}

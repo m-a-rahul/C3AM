@@ -7,14 +7,13 @@ from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from database import MongoAPI
 from auth import current_user, authenticate
-from components import unique_email, device_registration, totp_mail, is_device_registered
-from core import verify_totp
+from components import unique_email, device_registration, totp_mail, is_device_registered, decryptAES, verify_totp
 from model.main import password_less_register, password_less_login
 
 app = Flask(__name__)
 mail = Mail(app)
 app.config['DEBUG'] = True
-app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SECRET_KEY'] = settings.APP_KEY
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
@@ -25,7 +24,7 @@ app.config['MAIL_USE_SSL'] = True
 
 mail = Mail(app)
 
-app.config['JWT_SECRET_KEY'] = os.urandom(24)
+app.config['JWT_SECRET_KEY'] = settings.JWT_KEY
 
 JWTManager(app)
 CORS(app)
@@ -42,7 +41,7 @@ def current_user_session():
 
 @app.route('/users/register', methods=['POST'])
 def register():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["user_details"]["email"])
@@ -95,7 +94,7 @@ def register():
 
 @app.route('/users/activate', methods=['POST'])
 def account_activation():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Verify the posted TOTP
     if not verify_totp(document)["status"] == "success":
@@ -123,7 +122,7 @@ def account_activation():
 
 @app.route('/users/password_less/activation', methods=['POST'])
 def password_less_activation():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["email"])
@@ -160,7 +159,7 @@ def password_less_activation():
 
 @app.route('/users/password_less/login', methods=['POST'])
 def password_less_authentication():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["email"])
@@ -213,7 +212,7 @@ def password_less_authentication():
 
 @app.route('/users/resend', methods=['POST'])
 def resend_totp():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["email"])
@@ -245,7 +244,7 @@ def resend_totp():
 
 @app.route('/users/mfa-login', methods=['POST'])
 def mfa_login():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["email"])
@@ -277,7 +276,7 @@ def mfa_login():
 
 @app.route('/users/complete-mfa', methods=['POST'])
 def complete_mfa():
-    document = request.json
+    document = json.loads(decryptAES(request.json["encrypted"]))
 
     # Email Validation
     email_validation = unique_email(document["email"])
