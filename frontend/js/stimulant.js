@@ -57,6 +57,32 @@ const post = (json_data, url_path, callback, asyncStatus = true) => {
         });
 }
 
+const jwt_post = (json_data, url_path, callback, asyncStatus = true) => {
+    var key ='AAAAAAAAAAAAAAAA';
+    key = CryptoJS.enc.Utf8.parse(key);
+    var encrypted = CryptoJS.AES.encrypt(JSON.stringify(json_data), key, {mode: CryptoJS.mode.ECB});
+    encrypted =encrypted.toString();
+    $.ajax({
+            type: "POST",
+            async: asyncStatus,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer "+getStorage("access_token")
+              },
+            credentials: 'same-origin',
+            data: JSON.stringify({"encrypted":encrypted}),
+            timeout: 60000,
+            url: "http://localhost:50001/"+url_path,
+        })
+        .done(function(result) {
+            callback(result);
+        })
+        .fail(function(result) {
+            callback("ajax_timeout");
+            return false;
+        });
+}
+
 const get = (url_path, callback, asyncStatus = true) => {
     $.ajax({
             type: "GET",

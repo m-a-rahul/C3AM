@@ -1,5 +1,4 @@
 import settings
-import os
 from flask import Flask, Response, json, request
 from flask_mail import Mail
 from flask_cors import CORS
@@ -30,10 +29,11 @@ JWTManager(app)
 CORS(app)
 
 
-@app.route('/users/current-user', methods=['GET'])
+@app.route('/users/current-user', methods=['POST'])
 @jwt_required()
 def current_user_session():
-    current_session = current_user()
+    document = json.loads(decryptAES(request.json["encrypted"]))
+    current_session = current_user(document["device_details"])
     return Response(response=json.dumps(current_session),
                     status=200 if current_session["status"] == "success" else 400,
                     mimetype='application/json')
@@ -143,7 +143,7 @@ def password_less_activation():
     update_res = user_obj.update({"email": document["email"]},
                                  {"active": True})
     passwordless_res = password_less_register(document)
-    auth_res = authenticate(document["email"])
+    auth_res = authenticate(document["email"], document["device_details"])
     # Check if active status has been updated and authentication have been executed
     if update_res["status"] != "success" or passwordless_res["status"] != "success" or auth_res["status"] != "success":
         return Response(
@@ -198,7 +198,7 @@ def password_less_authentication():
             mimetype='application/json')
 
     # Create the current user session
-    auth_res = authenticate(document["email"])
+    auth_res = authenticate(document["email"], document["device_details"])
     if auth_res["status"] != "success":
         return Response(
             response=json.dumps({"status": "failure", "code": "#109"}),
@@ -311,14 +311,14 @@ def complete_mfa():
                 mimetype='application/json')
 
     # Create the current user session
-    auth_res = authenticate(document["email"])
+    auth_res = authenticate(document["email"], document["device_details"])
     if auth_res["status"] != "success":
         return Response(
             response=json.dumps({"status": "failure", "code": "#109"}),
             status=400,
             mimetype='application/json')
 
-    return Response(response=json.dumps({"status": "success", "code": "101", "access_token": auth_res["access_token"]}),
+    return Response(response=json.dumps({"status": "success", "code": "#101", "access_token": auth_res["access_token"]}),
                     status=200,
                     mimetype='application/json')
 

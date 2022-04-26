@@ -3,4 +3,4 @@ JWT_KEY = '9h8I=p8W5OnChcFkAJ=U>3$Y0%R9PsvYB.7XNqx6YY2pgQQC($F8|MyDe@w*9G#/n02cW
 MONGO_CLIENT_URL = 'mongodb://localhost:5000/'
 MAIL_USERNAME = 'noreply.c3am.dev@gmail.com'
 MAIL_PASSWORD = '4mrDDT7B>(=B'
-AES_KEY = '0..=/|YwDRj?6z|?'
+AES_KEY = 'AAAAAAAAAAAAAAAA'

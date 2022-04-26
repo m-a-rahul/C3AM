@@ -1,7 +1,8 @@
 $(document).on('click','#submit',function() {
     let data = {
         "email":getStorage("email"),
-        "image": getBase64String()
+        "image": getBase64String(),
+        "device_details": getDeviceDetails()
     };
     post(data, "users/password_less/activation", function(response) {
         if(response.status == "success") {

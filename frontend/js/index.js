@@ -1,10 +1,16 @@
 $( document ).ready(function() {
-    get("users/current-user", function(response) {
+    let data = {
+        "device_details": getDeviceDetails()
+    };
+    jwt_post(data, "users/current-user", function(response) {
         if(response.status == "success") {
             $('#username').html(response.data.username);
             $('#email').html(response.data.email);
         } else {
-            window.location.href = "passwordless_login.html";
+            if(getStorage("email"))
+                window.location.href = "passwordless_login.html";
+            else
+                window.location.href = "registration.html";
         }
     });
 });
