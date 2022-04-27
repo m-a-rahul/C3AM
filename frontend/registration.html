@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Registration</title>
+        <link rel="stylesheet" href="css/main.css">
         <!-- JQuery -->
         <script
             src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -17,23 +18,27 @@
         <script src="js/registration.js"></script>
     </head>
     <body>
-        <form class="container mt-5">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" placeholder="John Doe">
-            </div>
-            <div class="mb-3">
-                <label for="email" class="form-label">Email address</label>
-                <input type="email" class="form-control" id="email" placeholder="name@example.com">
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="" id="remember">
-                <label class="form-check-label" for="remember">
-                  Remember device
-                </label>
-            </div>
-            <button type="button" id="submit" class="btn btn-primary mt-2">Submit</button><br/>
-            <a class="mt-3" href="passwordless_login.html">Login</a>
-        </form>
+        <div class="centered">
+            <form class="auth-div shadow p-5 bg-body rounded">
+                <h1 class="text-center mb-1 font-merriweather">Registration</h1>
+                <div class="text-center fw-light fs-small text-muted mb-5 font-merriweather">By signing in you are agreeing <br/> our <span class="text-terms">Term and privacy policy</span></div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="John Doe">
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <input type="email" class="form-control" id="email" placeholder="name@example.com">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="remember">
+                    <label class="form-check-label" for="remember">
+                      Remember device
+                    </label>
+                </div>
+                <button type="button" id="submit" class="btn btn-primary mt-2">Submit</button><br/>
+                <a class="mt-3 float-end" href="passwordless_login.html">Login</a>
+            </form>
+        </div>
     </body>
 </html>

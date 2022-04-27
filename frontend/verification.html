@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Account verification</title>
+        <link rel="stylesheet" href="css/main.css">
         <!-- JQuery -->
         <script
             src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -17,14 +18,18 @@
         <script src="js/verification.js"></script>
     </head>
     <body>
-        <form class="container mt-5">
-            <input id="email" class="form-control mb-3" type="email" readonly>
-            <div class="mb-3">
-                <label for="totp" class="form-label">OTP</label>
-                <input type="text" class="form-control" id="totp" placeholder="Enter 6 digit otp">
-            </div>
-            <button type="button" id="submit" class="btn btn-primary mt-2">Submit</button>
-            <button type="button" id="resend" class="btn btn-primary mt-2">Resend</button>
-        </form>
+        <div class="centered">
+            <form class="auth-div shadow p-5 bg-body rounded">
+                <h1 class="text-center mb-1 font-merriweather">Enter OTP</h1>
+                <div class="text-center fw-light fs-small text-muted mb-5 font-merriweather">Do not share your OTP with anyone else</div>
+                <input id="email" class="form-control mb-3" type="email" readonly>
+                <div class="mb-3">
+                    <label for="totp" class="form-label">OTP</label>
+                    <input type="text" class="form-control" id="totp" placeholder="Enter 6 digit otp">
+                </div>
+                <button type="button" id="submit" class="btn btn-primary mt-2">Submit</button>
+                <button type="button" id="resend" class="btn btn-primary mt-2">Resend</button>
+            </form>
+        </div>
     </body>
 </html>

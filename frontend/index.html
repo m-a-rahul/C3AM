@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Account verification</title>
+        <link rel="stylesheet" href="css/main.css">
         <!-- JQuery -->
         <script
             src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -17,14 +18,22 @@
         <script src="js/index.js"></script>
     </head>
     <body>
-        <div class="container mt-5">
-            <div>
-                Username: <span id="username"></span>
+        <div class="centered">
+            <div id="authenticated" class="d-none">
+                <div>
+                    Username: <span id="username"></span>
+                </div>
+                <div>
+                    Email: <span id="email"></span>
+                </div>
+                <button class="btn btn-primary mt-2" id="logout">Logout</button>
             </div>
-            <div>
-                Email: <span id="email"></span>
+            <div id="loading" class="vw-50">
+                <div class="d-flex align-items-center">
+                    <strong>Logging you in... &nbsp;</strong>
+                    <div class="spinner-border ms-auto" role="status" aria-hidden="true"></div>
+                </div>
             </div>
-            <button class="btn btn-primary" id="logout">Logout</button>
         </div>
     </body>
 </html>
