@@ -15,6 +15,9 @@ The architecture can highly prevent the attacks targeted on
 the cloud environments by forming an inclusive platform of
 encryption, encoding and hashing algorithms
 
+SSO is provided using user signature verification which is built using deep learning.
+The implementation for the same can be found in this [link](https://github.com/Thejineaswar/Single-Sign-On-Signature-Verification)
+
 # Collaborators 
   
   [Pritish Gupta](https://github.com/princepritish)<br>
